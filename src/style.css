@@ -1,0 +1,49 @@
+*{box-sizing:border-box}body{margin:0;font-family:'Comic Sans MS','Baloo 2',system-ui,sans-serif;background:linear-gradient(180deg,#38bdf8,#a7f3d0);min-height:100vh;color:#0f172a}
+#app{position:relative;min-height:100vh}
+.screen{position:fixed;inset:0;display:flex;justify-content:center;align-items:flex-start;overflow-y:auto;overscroll-behavior:contain;padding:16px;z-index:10;-webkit-overflow-scrolling:touch}
+.screen .card{margin:auto}
+#screen-game{padding:0;overflow:hidden}
+@media (max-height:700px){
+  .card{padding:20px 18px}
+  .card h1{font-size:32px}
+  .card h1 span{font-size:22px}
+  .mascot{font-size:36px;margin:4px 0}
+  .subtitle{font-size:16px;margin:8px 0}
+  .big-btn{font-size:22px;padding:12px 24px;min-width:220px}
+}
+.hidden{display:none!important}
+.card{background:#fff;border-radius:28px;padding:32px 28px;max-width:480px;width:100%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.25);border:6px solid #facc15}
+.card h1{font-size:42px;margin:0;line-height:1;color:#1d4ed8}.card h1 span{font-size:28px;color:#16a34a}
+.subtitle{font-size:19px;margin:14px 0}.mascot{font-size:52px;margin:8px 0}
+.big-btn{background:linear-gradient(180deg,#22c55e,#15803d);color:#fff;font-size:26px;font-weight:900;border:none;border-radius:20px;padding:16px 32px;cursor:pointer;margin:8px;box-shadow:0 6px 0 #14532d;min-width:260px}
+.big-btn:active{transform:translateY(4px);box-shadow:none}
+.ghost-btn{background:#e0f2fe;border:3px solid #0284c7;color:#0369a1;font-size:18px;font-weight:800;border-radius:14px;padding:10px 20px;cursor:pointer;margin:6px}
+.small-btn{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:12px;padding:8px 14px;font-size:16px;cursor:pointer;z-index:30}
+#how-box{text-align:left;background:#fef9c3;border-radius:14px;padding:8px 18px;margin:10px 0;font-size:17px}
+.warn{color:#dc2626;font-weight:700}
+.calib-bar{height:18px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin:12px 0}
+#calib-fill{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#eab308);transition:width .2s}
+#cam-preview{width:100%;border-radius:16px;transform:scaleX(-1);background:#000;max-height:300px}
+#screen-game{padding:0}
+#game3d{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;z-index:20}
+.hud-item{background:rgba(255,255,255,.92);border:3px solid #facc15;border-radius:14px;padding:6px 14px;font-size:20px}
+#hud-msg{position:absolute;top:64px;left:50%;transform:translateX(-50%);background:#1e3a8a;color:#fff;font-size:22px;font-weight:900;padding:8px 22px;border-radius:99px;white-space:nowrap}
+#pip{position:absolute;left:12px;bottom:12px;width:240px;border:4px solid #fff;border-radius:16px;overflow:hidden;z-index:20;background:#000;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+#pip video{width:100%;display:block;transform:scaleX(-1)}
+#skeleton2d{position:absolute;inset:0;width:100%;height:100%}
+#pip-label{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);background:#facc15;font-weight:900;font-size:13px;padding:2px 12px;border-radius:99px}
+#feedback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:25;font-size:90px;font-weight:900;text-shadow:0 4px 0 rgba(0,0,0,.3)}
+.pop{animation:pop .9s ease-out}
+@keyframes pop{0%{transform:scale(.3);opacity:0}30%{transform:scale(1.2);opacity:1}100%{transform:scale(1);opacity:0}}
+#gesture-box p,#over-gesture p{font-size:18px;font-weight:800;margin:8px 0 4px}
+#gesture-fill,#over-gesture-fill{height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#a855f7);transition:width .1s}
+#game-list{display:flex;flex-direction:column;gap:12px;margin:12px 0}
+.game-card{display:flex;align-items:center;gap:12px;background:#f0fdf4;border:3px solid #22c55e;border-radius:18px;padding:10px 12px;text-align:left}
+.game-emoji{font-size:44px}
+.game-info{display:flex;flex-direction:column;flex:1;font-size:15px}
+.game-info b{font-size:19px;color:#15803d}
+.game-best{font-weight:800;color:#b45309}
+.game-card .big-btn{min-width:0;font-size:20px;padding:12px 18px;margin:0}
+#over-stars{font-size:56px}
+#over-score{font-size:24px;font-weight:800}

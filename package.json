@@ -1,0 +1,21 @@
+{
+  "name": "movokids-goleiro-3d",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "MovoKids - Jogo do Goleiro 3D com MediaPipe + Three.js",
+  "scripts": {
+    "dev": "vite",
+    "rede": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.160.0",
+    "@mediapipe/tasks-vision": "^0.10.14",
+    "gsap": "^3.12.5"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0",
+    "@vitejs/plugin-basic-ssl": "^1.2.0"
+  }
+}

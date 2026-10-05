@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🧤 MovoKids — Goleiro 3D</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧤</text></svg>" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Tela menu -->
+    <div id="screen-menu" class="screen">
+      <div class="card">
+        <h1>🧤 MovoKids<br><span>Goleiro Mágico 3D</span></h1>
+        <p class="subtitle">Você É o goleiro! A câmera fica atrás do seu boneco.<br>Sua direita é a direita dele — sem espelho, sem confusão! 🧤</p>
+        <div class="mascot">🧒⚽🧤</div>
+        <div id="game-list"></div>
+        <button id="btn-how" class="ghost-btn">❓ Como jogar</button>
+        <div id="how-box" class="hidden">
+          <ol>
+            <li>📷 Permita a câmera</li>
+            <li>🧍 Fique longe: apareça do joelho pra cima</li>
+            <li>🧤 Mexa os braços — seu boneco 3D copia você, visto de costas</li>
+            <li>⚽ A bola vem na sua cara — toque nela antes de entrar!</li>
+          </ol>
+        </div>
+        <p id="compat-msg" class="warn"></p>
+      </div>
+    </div>
+
+    <!-- Tela calibragem -->
+    <div id="screen-calib" class="screen hidden">
+      <div class="card">
+        <h2 id="calib-title">📷 Fique no gol!</h2>
+        <p id="calib-msg">Carregando câmera...</p>
+        <div class="calib-bar"><div id="calib-fill"></div></div>
+        <video id="cam-preview" playsinline muted></video>
+        <div id="gesture-box" class="hidden">
+          <p>👍 Segure o <b>joinha</b> pra começar sozinho!</p>
+          <div class="calib-bar"><div id="gesture-fill"></div></div>
+        </div>
+        <button id="btn-play-now" class="big-btn hidden">⚽ JOGAR!</button>
+      </div>
+    </div>
+
+    <!-- Tela jogo -->
+    <div id="screen-game" class="screen hidden">
+      <canvas id="game3d"></canvas>
+      <div id="hud">
+        <div class="hud-item"><span id="hud-i1">🧤</span> <b id="hud-saves">0</b></div>
+        <div class="hud-item"><span id="hud-i2">⚽</span> <b id="hud-goals">0</b><span id="hud-goals-max">/3</span></div>
+        <div class="hud-item"><span id="hud-i3">🔥</span> <b id="hud-level">1</b></div>
+        <div class="hud-item">🏆 <b id="hud-best">0</b></div>
+        <div id="hud-msg">Prepare-se...</div>
+      </div>
+      <div id="pip">
+        <video id="cam-game" playsinline muted></video>
+        <canvas id="skeleton2d" width="240" height="180"></canvas>
+        <div id="pip-label">VOCÊ</div>
+      </div>
+      <div id="feedback"></div>
+      <button id="btn-quit" class="small-btn">✕ Sair</button>
+    </div>
+
+    <!-- Tela fim -->
+    <div id="screen-over" class="screen hidden">
+      <div class="card">
+        <h2 id="over-title">🎉 Fim de jogo!</h2>
+        <div id="over-stars">⭐⭐⭐</div>
+        <p id="over-score"></p>
+        <p id="over-record"></p>
+        <div id="over-gesture" class="hidden">
+          <p>👍 Segure o <b>joinha</b> pra jogar de novo!</p>
+          <div class="calib-bar"><div id="over-gesture-fill"></div></div>
+        </div>
+        <button id="btn-again" class="big-btn">🔄 JOGAR DE NOVO</button>
+        <button id="btn-menu" class="ghost-btn">🏠 Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <video id="cam-hidden" playsinline muted style="display:none"></video>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
