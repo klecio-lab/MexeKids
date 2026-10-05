@@ -1,8 +1,8 @@
 {
-  "name": "movokids-goleiro-3d",
+  "name": "mexekids",
   "version": "0.1.0",
   "type": "module",
-  "description": "MovoKids - Jogo do Goleiro 3D com MediaPipe + Three.js",
+  "description": "MexeKids - jogos infantis que se jogam com o corpo (MediaPipe + Three.js)",
   "scripts": {
     "dev": "vite",
     "rede": "vite --host",

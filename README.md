@@ -1,4 +1,4 @@
-# 🧤 MovoKids — Goleiro Mágico 3D
+# 🤸 MexeKids — jogue com o corpo
 
 Jogo web infantil: fique de frente para a câmera no gol fixo, seu **boneco 3D** copia seus movimentos e você defende bolas aleatórias com **hitboxes 3D** (luvas, cabeça, peito).
 

@@ -1,4 +1,4 @@
-// Hub MovoKids — fino de propósito: telas + registro de jogos.
+// Hub MexeKids — fino de propósito: telas + registro de jogos.
 // Todo o trabalho pesado (câmera, pose, mãos, gestos) mora no InputManager.
 // Adicionar um jogo = 1 arquivo em games/ + 1 linha em games/registry.js.
 import { InputManager, holdProgress, resetHold } from './engine/input.js';

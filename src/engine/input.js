@@ -1,4 +1,4 @@
-// InputManager — TODA a entrada do MovoKids num só lugar (a "base").
+// InputManager — TODA a entrada do MexeKids num só lugar (a "base").
 // Câmera persistente + pose + mãos + gestos. Chamado 1x por frame pelo jogo.
 //
 // Uso:
