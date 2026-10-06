@@ -7,21 +7,27 @@ import { Avatar3D } from '../game/avatar3d.js';
 import { Particles3D } from '../game/particles3d.js';
 import { sounds, audioCtx, playNote } from '../engine/audio.js';
 import { storage } from '../engine/storage.js';
+import { POSES, TUNE, TUNE_BEATS, checkPose } from './poseCheck.js';
 
-// Musiquinha alegre em loop (sequenciador simples no AudioContext compartilhado)
-const TUNE = [523, 659, 784, 659, 880, 784, 659, 587, 523, 659, 784, 880, 784, 659, 587, 523];
+// Cantiga em loop (sequenciador com ritmo: cada nota dura seus tempos).
+// 32 tempos x 0.19s ~= 6s por volta — a dança dura 1 volta inteira!
+const BEAT_S = 0.19;
 class MusicBox {
   constructor() { this.timer = null; this.step = 0; }
   start() {
     this.stop();
     try { audioCtx(); } catch { return; }
     this.step = 0;
-    this.timer = setInterval(() => {
-      try { playNote(TUNE[this.step % TUNE.length], 0, 0.18); } catch {}
+    const play = () => {
+      if (!this.timer) return;
+      const [freq, beats] = TUNE[this.step % TUNE.length];
+      try { playNote(freq, 0, beats * BEAT_S * 0.92); } catch {}
       this.step++;
-    }, 200);
+      this.timer = setTimeout(play, beats * BEAT_S * 1000);
+    };
+    this.timer = setTimeout(play, 0);
   }
-  stop() { if (this.timer) clearInterval(this.timer); this.timer = null; }
+  stop() { if (this.timer) clearTimeout(this.timer); this.timer = null; }
 }
 
 // Quanto o corpo mexeu entre frames (soma nariz + punhos, em metros).
@@ -37,7 +43,7 @@ export function bodyMotion(joints, prev) {
 const STILL_MAX = 0.05;
 
 const ROUNDS = 5;
-const DANCE_S = 4.5;
+const DANCE_S = TUNE_BEATS * BEAT_S + 0.2; // 1 volta inteira da cantiga (~6.3s)
 const FREEZE_S = 8;
 const HOLD_S = 3;
 
@@ -69,6 +75,7 @@ export class StatueGame {
 
     this.points = 0; this.misses = 0; this.round = 0;
     this.running = false;
+    this.pose = POSES[0];
   }
 
   onResize() {
@@ -115,11 +122,12 @@ export class StatueGame {
   nextRound() {
     if (this.round >= ROUNDS) return this.finish();
     this.round++;
+    this.pose = POSES[Math.floor(Math.random() * POSES.length)];
     this.state = 'dance';
     this.stateT = 0;
     this.music.start();
     this.ev.onHud?.(this.stats());
-    this.ev.onMsg?.('💃 DANCE!');
+    this.ev.onMsg?.(`💃 DANCE! ${this.pose.cmd}`);
   }
 
   finish() {
@@ -150,7 +158,7 @@ export class StatueGame {
         this.stateT = 0;
         this.hold = 0;
         this.prevJ = null;
-        this.ev.onMsg?.('❄️ CONGELOU! Nem pisque!');
+        this.ev.onMsg?.(`❄️ CONGELOU! ${this.pose.cmd}`);
       }
     } else if (this.state === 'freeze') {
       const motion = bodyMotion(joints, this.prevJ);
@@ -160,13 +168,18 @@ export class StatueGame {
         };
       }
       const still = joints ? motion < STILL_MAX : false;
-      this.hold = still ? this.hold + dt : Math.max(0, this.hold - dt * 2);
+      const poseOk = checkPose(joints, this.pose.id);
+      const locked = still && poseOk;
+      this.hold = locked ? this.hold + dt : Math.max(0, this.hold - dt * 2);
 
       this.msgT += dt;
       if (this.msgT > 0.2) {
         this.msgT = 0;
-        const bar = '▓'.repeat(Math.round((this.hold / HOLD_S) * 8)).padEnd(8, '░');
-        this.ev.onMsg?.(`❄️ ${bar}`);
+        if (joints && !poseOk) this.ev.onMsg?.(`❌ ${this.pose.cmd}`);
+        else {
+          const bar = '▓'.repeat(Math.round((this.hold / HOLD_S) * 8)).padEnd(8, '░');
+          this.ev.onMsg?.(`❄️ ${bar}`);
+        }
       }
       if (this.hold >= HOLD_S) {
         this.points++;
@@ -178,7 +191,7 @@ export class StatueGame {
         this.stateT = 0;
       } else if (this.stateT > FREEZE_S) {
         this.misses++;
-        this.ev.onMsg?.('😅 Mexeu... foi por pouco!');
+        this.ev.onMsg?.(`😅 Era ${this.pose.short}!`);
         this.ev.onHud?.(this.stats());
         this.state = 'rest';
         this.stateT = 0;

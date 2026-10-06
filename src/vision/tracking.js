@@ -27,6 +27,7 @@ export function resetSmooth() {
   bodyRef.base = null; bodyRef.jump = 0;
   bodyRef.leg = LEG_REF; bodyRef.legRef = LEG_REF;
   bodyRef.hasRef = false; bodyRef.lastGood = 0; bodyRef.lastJ = null;
+  bodyRef.hipsOk = false;
 }
 
 export function isVisible(lm, i, min = 0.4) {
@@ -61,7 +62,7 @@ const LEG_REF = 1.15;        // perna (quadril->tornozelo) em pé, em metros-bon
                              // = 0.75m reais x escala do boneco (0.55/0.35)
 const bodyRef = {
   cx: 0.5, cy: 0.65, k: 3, base: null, jump: 0, leg: LEG_REF, legRef: LEG_REF,
-  pcx: 0.5, pcy: 0.65, hasRef: false, lastGood: 0, lastJ: null
+  pcx: 0.5, pcy: 0.65, hasRef: false, lastGood: 0, lastJ: null, hipsOk: false
 };
 function copyJoints(J) { const o = {}; for (const k in J) o[k] = { ...J[k] }; return o; }
 
@@ -69,23 +70,37 @@ export function mapJointsToGoal(lm) {
   if (!lm) return null;
   const now = performance.now();
   const R = bodyRef;
-  // Frame ruim (ombro OU quadril sumiu) ou teleporte do tracker:
+  // Frame ruim (sem ombros = sem boneco) ou teleporte do tracker:
   // segura a última pose boa por 1s (oclusão momentânea), depois some.
-  // Nunca deforma o boneco com lixo!
-  let bad = !isVisible(lm, IDX.L_SH, 0.35) || !isVisible(lm, IDX.R_SH, 0.35)
-    || !isVisible(lm, IDX.L_HIP, 0.35) || !isVisible(lm, IDX.R_HIP, 0.35);
-  const hipCx = (lm[IDX.L_HIP].x + lm[IDX.R_HIP].x) / 2;
-  const hipCy = (lm[IDX.L_HIP].y + lm[IDX.R_HIP].y) / 2;
-  if (!bad && R.hasRef && Math.hypot(hipCx - R.pcx, hipCy - R.pcy) > 0.3) bad = true;
-  if (bad) {
+  // Quadril fora do quadro (MERGULHO pro canto!) não congela: estima pelos
+  // ombros p/ o boneco continuar seguindo. Nunca deforma com lixo!
+  const bad = !isVisible(lm, IDX.L_SH, 0.35) || !isVisible(lm, IDX.R_SH, 0.35);
+  const hipsOk = isVisible(lm, IDX.L_HIP, 0.35) && isVisible(lm, IDX.R_HIP, 0.35);
+  const shCx = (lm[IDX.L_SH].x + lm[IDX.R_SH].x) / 2;
+  const shCy = (lm[IDX.L_SH].y + lm[IDX.R_SH].y) / 2;
+  let hipCx, hipCy;
+  if (hipsOk) {
+    hipCx = (lm[IDX.L_HIP].x + lm[IDX.R_HIP].x) / 2;
+    hipCy = (lm[IDX.L_HIP].y + lm[IDX.R_HIP].y) / 2;
+  } else {
+    hipCx = shCx;
+    hipCy = shCy + 0.45 / Math.max(1, R.k); // torso ~= 0.45m em norm
+  }
+  // teleporte = salto impossível num frame SÓ (mergulho de verdade passa!);
+  // transição quadril visível<->estimado não conta como teleporte
+  const jumped = R.hasRef && hipsOk === R.hipsOk
+    && Math.hypot(hipCx - R.pcx, hipCy - R.pcy) > 0.45;
+  if (bad || jumped) {
     if (R.lastJ && now - R.lastGood < 1000) return copyJoints(R.lastJ);
     return null;
   }
-  R.pcx = hipCx; R.pcy = hipCy; R.hasRef = true; R.lastGood = now;
+  R.pcx = hipCx; R.pcy = hipCy; R.hasRef = true; R.lastGood = now; R.hipsOk = hipsOk;
   const shW = Math.abs(lm[IDX.L_SH].x - lm[IDX.R_SH].x);
-  // centro segue rápido (mergulho lateral!), tamanho devagar (não "respira")
-  R.cx += (hipCx - R.cx) * 0.5;
-  R.cy += (hipCy - R.cy) * 0.5;
+  // centro adaptativo: perto segue suave, longe COLA (mergulho não fica pra trás)
+  const dcx = hipCx - R.cx, dcy = hipCy - R.cy;
+  const f = 0.5 + 0.4 * Math.min(1, Math.hypot(dcx, dcy) / 0.3);
+  R.cx += dcx * f;
+  R.cy += dcy * f;
   const kTarget = Math.max(1.0, Math.min(7, AVATAR_SHOULDER / Math.max(0.05, shW)));
   R.k += (kTarget - R.k) * 0.08;
   // pulo: quadril sobe rápido = boneco sobe (baseline lenta ignora agachar contínuo)
@@ -107,7 +122,7 @@ export function mapJointsToGoal(lm) {
   const crouch = Math.max(0, Math.min(0.5, R.legRef - R.leg));
   const airW = Math.max(0, Math.min(1, 1 - Math.max(0, R.jump) / 0.2));
   const rootY = HIP_Y + jumpOff - crouch * airW;
-  const rootX = Math.max(-2.4, Math.min(2.4, (R.cx - 0.5) * GOAL_W * 0.9));
+  const rootX = Math.max(-2.9, Math.min(2.9, (R.cx - 0.5) * GOAL_W * 1.1));
   const get = (i) => {
     const p = lm[i];
     const s = lerpPt('j' + i, p.x, p.y, p.z || 0);

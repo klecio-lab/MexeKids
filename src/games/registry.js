@@ -2,6 +2,8 @@
 // Cada jogo implementa: create(canvas, events) => { start, stop, dispose,
 // setJointsProvider(fn), setFrameHook(fn) }  (ver games/_template.js)
 import { GoalkeeperGame } from '../game/goalkeeper.js';
+import { DodgeGame } from './dodge.js';
+import { PowersGame } from './powers.js';
 import { StatueGame } from './statue.js';
 import { FightGame } from './fight.js';
 import { ShooterGame } from './shooter.js';
@@ -17,10 +19,28 @@ export const GAMES = [
     create: (canvas, events) => new GoalkeeperGame(canvas, events)
   },
   {
+    id: 'dodge',
+    emoji: '🔥',
+    title: 'Queimado Maluco',
+    desc: 'Desvie das boladas! Encostou perde vida (3 💔). Raspou = +2! 💨',
+    icons: ['🔥', '😅', '💨'],
+    goalsMax: '/3',
+    create: (canvas, events) => new DodgeGame(canvas, events)
+  },
+  {
+    id: 'powers',
+    emoji: '🪄',
+    title: 'Poderes da Voz',
+    desc: 'GRITE pra carregar! FOGO, GELO ou RAIO sai da sua mão! 🎤',
+    icons: ['⭐', '🪄', '⚡'],
+    goalsMax: '',
+    create: (canvas, events) => new PowersGame(canvas, events)
+  },
+  {
     id: 'statue',
     emoji: '🧍',
-    title: 'Estátua Mágica',
-    desc: 'Dance! Quando a música parar, congele como estátua! ❄️',
+    title: 'Estátua Cantada 🎵',
+    desc: 'Dance a cantiga! Congele NA pose: mão na cabeça ou na cintura! ❄️',
     icons: ['⭐', '😅', '🗿'],
     goalsMax: '/5',
     create: (canvas, events) => new StatueGame(canvas, events)
