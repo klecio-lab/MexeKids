@@ -181,8 +181,8 @@ function neutralPose(b = 0) {
     lEl: { x: -0.75, y: 1.15 + b, z: 0.15 }, rEl: { x: 0.75, y: 1.15 + b, z: 0.15 },
     lWr: { x: -0.95, y: 1.35 + b, z: 0.25 }, rWr: { x: 0.95, y: 1.35 + b, z: 0.25 },
     lHip: { x: -0.22, y: 0.85, z: 0.05 }, rHip: { x: 0.22, y: 0.85, z: 0.05 },
-    lKnee: { x: -0.24, y: 0.45, z: 0.05 }, rKnee: { x: 0.24, y: 0.45, z: 0.05 },
-    lAnk: { x: -0.26, y: 0.08, z: 0.05 }, rAnk: { x: 0.26, y: 0.08, z: 0.05 }
+    lKnee: { x: -0.24, y: 0.5, z: 0.05 }, rKnee: { x: 0.24, y: 0.5, z: 0.05 },
+    lAnk: { x: -0.26, y: 0.15, z: 0.05 }, rAnk: { x: 0.26, y: 0.15, z: 0.05 }
   };
 }
 function setV(mesh, p) { mesh.position.set(p.x, p.y, p.z); }

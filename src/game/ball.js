@@ -2,17 +2,29 @@
 import * as THREE from 'three';
 import { GOAL_W, GOAL_H } from '../vision/tracking.js';
 
+function pentagon(g, x, y, r) {
+  g.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+    const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+    if (i === 0) g.moveTo(px, py); else g.lineTo(px, py);
+  }
+  g.closePath();
+  g.fill();
+}
 function ballTexture() {
   const c = document.createElement('canvas');
   c.width = c.height = 128;
   const g = c.getContext('2d');
   g.fillStyle = '#ffffff'; g.fillRect(0, 0, 128, 128);
   g.fillStyle = '#111827';
-  g.beginPath(); g.arc(64, 64, 22, 0, 7); g.fill();
-  for (const [x, y] of [[20, 20], [108, 20], [20, 108], [108, 108]]) {
-    g.beginPath(); g.arc(x, y, 14, 0, 7); g.fill();
+  pentagon(g, 64, 64, 20);
+  for (const [x, y] of [[14, 14], [114, 14], [14, 114], [114, 114], [64, 4], [64, 124]]) {
+    pentagon(g, x, y, 13);
   }
-  return new THREE.CanvasTexture(c);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
 let tex = null;
 
@@ -48,9 +60,9 @@ export class Ball3D {
     this.t = 0;
   }
 
-  shoot(level) {
-    // origem: marca do pênalti, alvo aleatório dentro do gol
-    this.from = new THREE.Vector3((Math.random() - 0.5) * 4, 0.6 + Math.random() * 1.6, 12);
+  shoot(level, fromX) {
+    // origem: marca do pênalti (default aleatória; goleiro passa o pé do batedor)
+    this.from = new THREE.Vector3(fromX ?? (Math.random() - 0.5) * 4, 0.6 + Math.random() * 1.6, 12);
     const margin = 0.35;
     this.to = new THREE.Vector3(
       (Math.random() - 0.5) * (GOAL_W - margin * 2),

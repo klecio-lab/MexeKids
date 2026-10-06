@@ -79,7 +79,7 @@ Se a câmera for negada, o **mouse move as luvas** automaticamente — dá pra t
 - `src/main.js` — telas menu → calibragem → jogo → fim
 
 ## Jogos (hub — adicionar = 1 arquivo + 1 linha no registry)
-- 🧤 **Goleiro Mágico 3D** — defenda bolas no gol fixo (hitboxes nas luvas).
+- 🧤 **Goleiro Mágico 3D** — defenda os pênaltis do batedor (minion animado CC0) no gol fixo: hitstop, flash, torcida viva, céu e hitboxes nas luvas.
 - 🧍 **Estátua Mágica** — dance com a música; quando parar, imite o fantasma dourado e congele 3s (similaridade de pose normalizada).
 - 🥊 **Soco Maluco** — soque o robô (luva rápida perto do peito) e bloqueie as estrelas de energia. HP, combo, KO e níveis.
 - 🎯 **Mira Maluca** — galeria de tiro com as DUAS luvas (mira dupla, tiro alternado): linha de mira + marca de impacto na parede, bolhas automáticas, pinça 👌 pro canhão de confete (na mão que pinçou), ✌️ troca de arma. Balão dourado bônus, 60s contra o relógio.

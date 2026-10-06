@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { Avatar3D } from '../game/avatar3d.js';
 import { Ball3D } from '../game/ball.js';
 import { Particles3D } from '../game/particles3d.js';
-import { sounds, cheer } from '../engine/audio.js';
+import { sounds } from '../engine/audio.js';
 import { storage } from '../engine/storage.js';
 
 // Detecção de soco pura (testável em Node): luva rápida + perto do alvo.
@@ -18,7 +18,7 @@ export function punchHit(g, prev, dt, t, r, speedMin = 2.2, reach = 1.3) {
 }
 
 const POWS = ['🥊 POW!', '💥 BAM!', '⭐ KAPOW!', '💪 BOA!'];
-const OUCH = ['Ai! Bloqueie com as luvas! 🧤', 'Quase! Mãos pra cima! 🙌', 'Opa! Defenda a estrela! ⭐'];
+
 
 function buildRing(scene) {
   scene.background = new THREE.Color(0x1e1b4b);
@@ -140,7 +140,7 @@ export class FightGame {
 
     buildRing(this.scene);
     this.avatar = new Avatar3D(this.scene);
-    this.avatar.group.position.y = 0.12; // pés em cima do tablado (topo y=0.2)
+    this.avatar.group.position.y = 0.18; // sola no tablado (topo y=0.2)
     const { group, hpFg, gloveL, gloveR } = buildRobot();
     this.robot = group;
     this.hpFg = hpFg;
@@ -265,7 +265,6 @@ export class FightGame {
 
   onStarHit(to) {
     this.ev.onPop?.('⭐ AI!');
-    cheer(OUCH[Math.floor(Math.random() * OUCH.length)]);
     this.loseHeart(new THREE.Vector3(to.x, to.y, 0.3));
   }
 
@@ -389,7 +388,6 @@ export class FightGame {
       this.particles.burst(this.robotChest(new THREE.Vector3()), 80);
       this.ev.onHud?.(this.stats());
       this.ev.onPop?.('🏆 NOCAUTE!');
-      cheer(['Nocaute! Incrível!', 'Que sequência!'][this.level % 2]);
     }
   }
 

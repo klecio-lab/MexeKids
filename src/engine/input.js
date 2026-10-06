@@ -11,7 +11,7 @@ import { startCamera, isLive, stopStreamTracks } from '../camera/camera.js';
 import { initPose, initHands, detectPose, detectHands } from '../vision/mediapipe.js';
 import { isThumbsUp } from '../vision/gestures.js';
 import {
-  mapJointsToGoal, checkFraming, resetSmooth
+  mapJointsToGoal, checkFraming, resetSmooth, setAspect
 } from '../vision/tracking.js';
 
 const CAM_TIMEOUT_MS = 10000;
@@ -46,6 +46,9 @@ export class InputManager {
       this.hasCamera = false;
     };
     this.hasCamera = true;
+    try {
+      if (this.video.videoWidth) setAspect(this.video.videoWidth / this.video.videoHeight);
+    } catch {}
     return this.stream;
   }
 

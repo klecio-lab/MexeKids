@@ -16,7 +16,7 @@
 //
 // Serviços prontos:
 //   sounds.save() / sounds.goal() / ...  (engine/audio.js)
-//   cheer('texto')                        (voz pt-BR)
+
 //   storage.best(id) / saveBest(id, pts)  (engine/storage.js)
 //   Avatar3D + getHitboxes()             (game/avatar3d.js — boneco + colisão)
 //   Particles3D                          (game/particles3d.js — confete)

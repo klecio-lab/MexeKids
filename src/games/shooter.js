@@ -8,7 +8,7 @@ import { gsap } from 'gsap';
 import { Particles3D } from '../game/particles3d.js';
 import { Avatar3D } from '../game/avatar3d.js';
 import { isPeace, isPinch } from '../vision/gestures.js';
-import { sounds, cheer } from '../engine/audio.js';
+import { sounds } from '../engine/audio.js';
 import { storage } from '../engine/storage.js';
 
 const AIM_SPAN = 10;   // largura do plano de mira (mundo -x = direita da tela)
@@ -417,7 +417,6 @@ export class ShooterGame {
     this.ev.onHud?.(this.stats());
     if (t.gold) {
       this.ev.onPop?.('🌟 DOURADO +5!');
-      cheer('Balão dourado! Demais!');
       t.t = 12; // próximo dourado
     }
   }
@@ -450,7 +449,7 @@ export class ShooterGame {
         }
       }
       this.particles.burst(new THREE.Vector3(aim.x, aim.y, WALL_Z - 0.4), 45);
-      if (direct) { this.ev.onPop?.('💥 EM CHEIO!'); cheer('Em cheio!'); }
+      if (direct) this.ev.onPop?.('💥 EM CHEIO!');
       else if (!hitAny) this.ev.onMsg?.('💥 Pra fora!');
     }
   }

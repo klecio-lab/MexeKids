@@ -21,7 +21,13 @@ function lerpPt(key, x, y, z = 0) {
   return p;
 }
 
-export function resetSmooth() { smooth.clear(); }
+export function resetSmooth() {
+  smooth.clear();
+  bodyRef.cx = 0.5; bodyRef.cy = 0.65; bodyRef.k = 3;
+  bodyRef.base = null; bodyRef.jump = 0;
+  bodyRef.leg = LEG_REF; bodyRef.legRef = LEG_REF;
+  bodyRef.hasRef = false; bodyRef.lastGood = 0; bodyRef.lastJ = null;
+}
 
 export function isVisible(lm, i, min = 0.4) {
   const p = lm?.[i];
@@ -42,22 +48,77 @@ export function landmarkToGoal(lm, out = {}) {
   return out;
 }
 
+// Mapeamento PROPORCIONAL AO CORPO (não explode perto/longe da câmera!):
+// tudo é relativo ao quadril, escalado pela largura dos ombros.
+// Perto ou longe, o boneco tem sempre o mesmo tamanho — só espelha o gesto.
+// Visão POR TRÁS (sem espelho): sua direita = direita da tela.
+let vidAspect = 16 / 9;
+export function setAspect(a) { if (a > 0.5 && a < 3) vidAspect = a; }
+
+const AVATAR_SHOULDER = 0.55; // ombros do boneco (m) ~= criança real (nada de gigante!)
+const HIP_Y = 0.85;          // altura do quadril em pé
+const LEG_REF = 1.15;        // perna (quadril->tornozelo) em pé, em metros-boneco
+                             // = 0.75m reais x escala do boneco (0.55/0.35)
+const bodyRef = {
+  cx: 0.5, cy: 0.65, k: 3, base: null, jump: 0, leg: LEG_REF, legRef: LEG_REF,
+  pcx: 0.5, pcy: 0.65, hasRef: false, lastGood: 0, lastJ: null
+};
+function copyJoints(J) { const o = {}; for (const k in J) o[k] = { ...J[k] }; return o; }
+
 export function mapJointsToGoal(lm) {
   if (!lm) return null;
-  // Visão POR TRÁS do goleiro (câmera dentro do gol olhando pro campo):
-  // SEM espelho — sua direita é a direita da tela, igual sombra.
-  // (lm.x pequeno = sua mão direita no frame cru → mundo -x = direita da tela)
+  const now = performance.now();
+  const R = bodyRef;
+  // Frame ruim (ombro OU quadril sumiu) ou teleporte do tracker:
+  // segura a última pose boa por 1s (oclusão momentânea), depois some.
+  // Nunca deforma o boneco com lixo!
+  let bad = !isVisible(lm, IDX.L_SH, 0.35) || !isVisible(lm, IDX.R_SH, 0.35)
+    || !isVisible(lm, IDX.L_HIP, 0.35) || !isVisible(lm, IDX.R_HIP, 0.35);
+  const hipCx = (lm[IDX.L_HIP].x + lm[IDX.R_HIP].x) / 2;
+  const hipCy = (lm[IDX.L_HIP].y + lm[IDX.R_HIP].y) / 2;
+  if (!bad && R.hasRef && Math.hypot(hipCx - R.pcx, hipCy - R.pcy) > 0.3) bad = true;
+  if (bad) {
+    if (R.lastJ && now - R.lastGood < 1000) return copyJoints(R.lastJ);
+    return null;
+  }
+  R.pcx = hipCx; R.pcy = hipCy; R.hasRef = true; R.lastGood = now;
+  const shW = Math.abs(lm[IDX.L_SH].x - lm[IDX.R_SH].x);
+  // centro segue rápido (mergulho lateral!), tamanho devagar (não "respira")
+  R.cx += (hipCx - R.cx) * 0.5;
+  R.cy += (hipCy - R.cy) * 0.5;
+  const kTarget = Math.max(1.0, Math.min(7, AVATAR_SHOULDER / Math.max(0.05, shW)));
+  R.k += (kTarget - R.k) * 0.08;
+  // pulo: quadril sobe rápido = boneco sobe (baseline lenta ignora agachar contínuo)
+  if (R.base === null) R.base = hipCy;
+  R.base += (hipCy - R.base) * 0.005;
+  R.jump += ((R.base - hipCy) * R.k / vidAspect - R.jump) * 0.4;
+  const jumpOff = Math.max(-0.35, Math.min(0.6, R.jump));
+  // agachar: perna encurta = raiz desce (baseline lentíssima não come o agachamento;
+  // no ar (tuck no pulo) o peso zera p/ não afundar o salto)
+  const legLen = ((lm[IDX.L_KNEE].y + lm[IDX.R_KNEE].y) / 2 - hipCy
+    + ((lm[IDX.L_ANK].y + lm[IDX.R_ANK].y) / 2 - (lm[IDX.L_KNEE].y + lm[IDX.R_KNEE].y) / 2) * 0.5)
+    * R.k / vidAspect;
+  // tornozelo fora do quadro = dado chutado: não alimenta o agachamento
+  const anklesOk = isVisible(lm, IDX.L_ANK, 0.3) && isVisible(lm, IDX.R_ANK, 0.3);
+  if (anklesOk) {
+    R.legRef += (legLen - R.legRef) * 0.0005; // deriva p/ o corpo real em minutos
+    R.leg += (legLen - R.leg) * 0.2;
+  }
+  const crouch = Math.max(0, Math.min(0.5, R.legRef - R.leg));
+  const airW = Math.max(0, Math.min(1, 1 - Math.max(0, R.jump) / 0.2));
+  const rootY = HIP_Y + jumpOff - crouch * airW;
+  const rootX = Math.max(-2.4, Math.min(2.4, (R.cx - 0.5) * GOAL_W * 0.9));
   const get = (i) => {
     const p = lm[i];
     const s = lerpPt('j' + i, p.x, p.y, p.z || 0);
     return {
-      x: (s.x - 0.5) * (GOAL_W * 1.25),
-      y: Math.max(-0.2, Math.min(2.8, (1 - s.y) * 3.1 - 0.35)),
+      x: Math.max(-GOAL_W / 2 - 0.6, Math.min(GOAL_W / 2 + 0.6, rootX + (s.x - R.cx) * R.k)),
+      y: Math.max(-0.1, Math.min(2.9, rootY + (R.cy - s.y) * R.k / vidAspect)),
       z: (s.z || 0) * -2,
       visible: (p.visibility ?? 1) > 0.35
     };
   };
-  return {
+  const J = {
     nose: get(0),
     lSh: get(IDX.L_SH), rSh: get(IDX.R_SH),
     lEl: get(IDX.L_EL), rEl: get(IDX.R_EL),
@@ -66,6 +127,14 @@ export function mapJointsToGoal(lm) {
     lKnee: get(IDX.L_KNEE), rKnee: get(IDX.R_KNEE),
     lAnk: get(IDX.L_ANK), rAnk: get(IDX.R_ANK)
   };
+  // ATERRISSA: pé mais baixo nunca entra no chão (sola do tênis r=0.13 + folga)
+  const minFoot = Math.min(J.lAnk.y, J.rAnk.y);
+  if (minFoot < 0.15) {
+    const lift = 0.15 - minFoot;
+    for (const k in J) J[k].y = Math.min(2.9, J[k].y + lift);
+  }
+  R.lastJ = copyJoints(J);
+  return J;
 }
 
 // Calibragem: precisa ver ombros + quadris, largura mínima e centralizado

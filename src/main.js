@@ -6,7 +6,7 @@ import { registerScreens, show, el } from './engine/screens.js';
 import { storage } from './engine/storage.js';
 import { sounds } from './engine/audio.js';
 import { GAMES, getGame } from './games/registry.js';
-import { drawSkeleton2D } from './vision/tracking.js';
+import { drawSkeleton2D, setAspect } from './vision/tracking.js';
 import { gsap } from 'gsap';
 
 registerScreens();

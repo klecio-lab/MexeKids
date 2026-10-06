@@ -36,10 +36,4 @@ export const sounds = {
   go() { tone(1047, 0, 0.4, 'square', 0.2); },
   click() { tone(700, 0, 0.08, 'sine', 0.2); }
 };
-export function cheer(text) {
-  try {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'pt-BR'; u.rate = 1.1; u.pitch = 1.3;
-    speechSynthesis.cancel(); speechSynthesis.speak(u);
-  } catch {}
-}
+// (narrador por voz removido por preferência: só SFX daqui pra frente)

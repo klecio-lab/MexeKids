@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { buildStage, stageRefs } from '../game/stage.js';
 import { Avatar3D } from '../game/avatar3d.js';
 import { Particles3D } from '../game/particles3d.js';
-import { sounds, cheer, audioCtx, playNote } from '../engine/audio.js';
+import { sounds, audioCtx, playNote } from '../engine/audio.js';
 import { storage } from '../engine/storage.js';
 
 // Musiquinha alegre em loop (sequenciador simples no AudioContext compartilhado)
@@ -56,7 +56,7 @@ export class StatueGame {
     const { tileMats } = buildStage(this.scene);
     this.tileMats = tileMats;
     this.avatar = new Avatar3D(this.scene);
-    this.avatar.group.position.y = 0.1; // pés na pista
+    this.avatar.group.position.y = 0.06; // sola na pista (topo 0.08)
     this.particles = new Particles3D(this.scene);
     this.music = new MusicBox();
 
@@ -174,12 +174,10 @@ export class StatueGame {
         this.particles.burst(new THREE.Vector3(0, 1.4, 0.3), 60);
         this.ev.onHud?.(this.stats());
         this.ev.onPop?.('❄️ ESTÁTUA!');
-        cheer(['Paradinho! Incrível!', 'Nem se mexeu!', 'Estátua perfeita!'][this.points % 3]);
         this.state = 'rest';
         this.stateT = 0;
       } else if (this.stateT > FREEZE_S) {
         this.misses++;
-        cheer('Se mexeu! Na próxima congela direitinho!');
         this.ev.onMsg?.('😅 Mexeu... foi por pouco!');
         this.ev.onHud?.(this.stats());
         this.state = 'rest';

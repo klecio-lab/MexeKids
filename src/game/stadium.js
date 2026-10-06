@@ -4,7 +4,7 @@ import { GOAL_W, GOAL_H } from '../vision/tracking.js';
 
 export function buildStadium(scene) {
   scene.background = new THREE.Color(0x87ceeb);
-  scene.fog = new THREE.Fog(0x87ceeb, 25, 60);
+  scene.fog = new THREE.Fog(0x9fd4ef, 25, 70);
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0x3a7d2c, 0.95));
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
@@ -13,10 +13,45 @@ export function buildStadium(scene) {
   sun.shadow.mapSize.set(1024, 1024);
   scene.add(sun);
 
-  // Gramado
+  // Céu em gradiente (dome) + sol + nuvens à deriva
+  const sky = new THREE.Mesh(
+    new THREE.SphereGeometry(90, 24, 16),
+    new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false, fog: false,
+      uniforms: { top: { value: new THREE.Color(0x2f7fe0) }, bottom: { value: new THREE.Color(0xd8f3ff) } },
+      vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+      fragmentShader: 'uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ float h = normalize(vP).y*0.5+0.5; gl_FragColor = vec4(mix(bottom, top, smoothstep(0.02,0.5,h)), 1.0); }'
+    })
+  );
+  scene.add(sky);
+  const sunBall = new THREE.Mesh(
+    new THREE.CircleGeometry(3, 24),
+    new THREE.MeshBasicMaterial({ color: 0xfff7c2, fog: false })
+  );
+  sunBall.position.set(-24, 26, 40);
+  sunBall.lookAt(0, 2, -4);
+  scene.add(sunBall);
+  const clouds = [];
+  const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.92, fog: false });
+  const cloudSpots = [[-14, 14, 22, 1.4], [-4, 17, 28, 1.9], [7, 13, 24, 1.2], [16, 16, 30, 1.6], [2, 19, 34, 2.2]];
+  for (const [cx, cy, cz, cs] of cloudSpots) {
+    const puff = new THREE.Group();
+    for (let i = 0; i < 3; i++) {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(1.4 - Math.abs(i - 1) * 0.4, 14, 12), cloudMat);
+      b.position.set((i - 1) * 1.5, (i % 2) * 0.4, 0);
+      b.scale.y = 0.6;
+      puff.add(b);
+    }
+    puff.position.set(cx, cy, cz);
+    puff.scale.setScalar(cs);
+    scene.add(puff);
+    clouds.push(puff);
+  }
+
+  // Gramado com textura de grama (ruído via canvas)
   const grass = new THREE.Mesh(
     new THREE.PlaneGeometry(60, 40),
-    new THREE.MeshStandardMaterial({ color: 0x3fa34d })
+    new THREE.MeshStandardMaterial({ map: makeGrassTexture(), roughness: 0.9 })
   );
   grass.rotation.x = -Math.PI / 2;
   grass.receiveShadow = true;
@@ -97,28 +132,68 @@ export function buildStadium(scene) {
     scene.add(f);
   }
   // Torcida: bonequinhos coloridos nas arquibancadas (1 draw call via InstancedMesh)
+  // updateCrowd(t, amp): faz pular (amp sobe no gol/defesa!)
+  const crowdCtl = { update: () => {} };
   {
     const perRow = 26;
+    const count = perRow * 3;
     const crowd = new THREE.InstancedMesh(
       new THREE.BoxGeometry(0.45, 0.7, 0.3),
       new THREE.MeshStandardMaterial({ roughness: 0.85 }),
-      perRow * 3
+      count
     );
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
+    const base = new Float32Array(count * 3);
     let ci = 0;
     for (let r = 0; r < 3; r++) {
       for (let i = 0; i < perRow; i++) {
-        dummy.position.set(-16 + i * 1.28 + (r % 2) * 0.6, 4.25 + r * 1.5, 22 + r * 2.2);
+        const x = -16 + i * 1.28 + (r % 2) * 0.6;
+        const y = 4.25 + r * 1.5;
+        const z = 22 + r * 2.2;
+        dummy.position.set(x, y, z);
         dummy.updateMatrix();
         crowd.setMatrixAt(ci, dummy.matrix);
         crowd.setColorAt(ci, col.setHex(flagColors[(i * 3 + r * 2) % flagColors.length]));
+        base[ci * 3] = x; base[ci * 3 + 1] = y; base[ci * 3 + 2] = z;
         ci++;
       }
     }
     crowd.instanceMatrix.needsUpdate = true;
     if (crowd.instanceColor) crowd.instanceColor.needsUpdate = true;
     scene.add(crowd);
+    crowdCtl.update = (t, amp) => {
+      for (let i = 0; i < count; i++) {
+        dummy.position.set(
+          base[i * 3],
+          base[i * 3 + 1] + Math.abs(Math.sin(t * 3 + i * 0.7)) * amp,
+          base[i * 3 + 2]
+        );
+        dummy.updateMatrix();
+        crowd.setMatrixAt(i, dummy.matrix);
+      }
+      crowd.instanceMatrix.needsUpdate = true;
+    };
+  }
+  // Árvores nas bordas (profundidade de graça)
+  {
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.9 });
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x1d7a33, roughness: 0.8 });
+    for (const [tx, tz, ts] of [[-15, 4, 1.2], [15, 5, 1.4], [-16, 14, 1.1], [16, 15, 1.3]]) {
+      const tree = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * ts, 0.24 * ts, 1.4 * ts, 8), trunkMat);
+      trunk.position.y = 0.7 * ts;
+      trunk.castShadow = true;
+      tree.add(trunk);
+      for (let c = 0; c < 2; c++) {
+        const cone = new THREE.Mesh(new THREE.ConeGeometry((1.1 - c * 0.3) * ts, 1.2 * ts, 10), leafMat);
+        cone.position.y = (1.6 + c * 0.8) * ts;
+        cone.castShadow = true;
+        tree.add(cone);
+      }
+      tree.position.set(tx, 0, tz);
+      scene.add(tree);
+    }
   }
   // Refletores (só visual, sem luz extra = sem custo)
   {
@@ -153,7 +228,25 @@ export function buildStadium(scene) {
     ad.rotation.y = i < 3 ? Math.PI / 2 : -Math.PI / 2;
     scene.add(ad);
   }
-  return { goal };
+  return { goal, updateCrowd: crowdCtl.update, clouds };
+}
+
+function makeGrassTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#3fa34d';
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 2600; i++) {
+    const v = Math.random();
+    g.fillStyle = v < 0.5 ? '#37973f' : (v < 0.8 ? '#46b455' : '#2f8a3a');
+    g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2 + Math.random() * 3);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(9, 6);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
 
 function makeNetTexture() {

@@ -34,6 +34,7 @@
 #skeleton2d{position:absolute;inset:0;width:100%;height:100%}
 #pip-label{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);background:#facc15;font-weight:900;font-size:13px;padding:2px 12px;border-radius:99px}
 #feedback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:25;font-size:90px;font-weight:900;text-shadow:0 4px 0 rgba(0,0,0,.3)}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:24}
 .pop{animation:pop .9s ease-out}
 @keyframes pop{0%{transform:scale(.3);opacity:0}30%{transform:scale(1.2);opacity:1}100%{transform:scale(1);opacity:0}}
 #gesture-box p,#over-gesture p{font-size:18px;font-weight:800;margin:8px 0 4px}
