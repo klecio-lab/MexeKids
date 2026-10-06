@@ -3,7 +3,7 @@
 // respiração (carga sozinha) + clique dispara. 60 segundos, recorde salvo.
 import * as THREE from 'three';
 import { gsap } from 'gsap';
-import { buildStadium } from '../game/stadium.js';
+import { buildMagicArena } from '../game/arena.js';
 import { Avatar3D } from '../game/avatar3d.js';
 import { Particles3D } from '../game/particles3d.js';
 import { sounds } from '../engine/audio.js';
@@ -30,7 +30,7 @@ export class PowersGame {
     this.camBase = this.camera.position.clone();
     this.shake = 0;
 
-    const { updateCrowd, clouds } = buildStadium(this.scene);
+    const { updateCrowd, clouds } = buildMagicArena(this.scene);
     this.updateCrowd = updateCrowd;
     this.clouds = clouds;
     this.crowdExcite = 1;
@@ -62,11 +62,12 @@ export class PowersGame {
       this.rings.push(r);
     }
 
-    // orbes-alvo flutuantes (cada um tem um elemento: combine pra +2!)
+    // CRISTAIS-alvo flutuantes (cada um tem um elemento: combine pra +2!)
+    // (octaedro + bolha: primo dos cristais da arena, nada de bola de futebol!)
     this.orbs = [];
     for (let i = 0; i < ORB_N; i++) {
       const core = new THREE.Mesh(
-        new THREE.SphereGeometry(0.34, 20, 16),
+        new THREE.OctahedronGeometry(0.42, 0),
         new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf97316, emissiveIntensity: 1.6, roughness: 0.3 })
       );
       const shell = new THREE.Mesh(
@@ -389,7 +390,8 @@ export class PowersGame {
           o.base.z
         );
         o.g.rotation.y += dt * 1.5;
-        o.g.scale.setScalar(1 + Math.sin(t * 4 + o.ph) * 0.1); // orbe "respira"
+        o.g.rotation.x += dt * 0.9; // cristal cambaleia no ar
+        o.g.scale.setScalar(1 + Math.sin(t * 4 + o.ph) * 0.1); // cristal "respira"
       }
       // magia voa pra onde a mão APONTOU (com leve ajuda pra não frustrar)
       for (const s of this.shots) {

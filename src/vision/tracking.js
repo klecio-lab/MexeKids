@@ -122,12 +122,17 @@ export function mapJointsToGoal(lm) {
   const crouch = Math.max(0, Math.min(0.5, R.legRef - R.leg));
   const airW = Math.max(0, Math.min(1, 1 - Math.max(0, R.jump) / 0.2));
   const rootY = HIP_Y + jumpOff - crouch * airW;
-  const rootX = Math.max(-2.9, Math.min(2.9, (R.cx - 0.5) * GOAL_W * 1.1));
+  const rootX = Math.max(-3.2, Math.min(3.2, (R.cx - 0.5) * GOAL_W * 1.3));
   const get = (i) => {
     const p = lm[i];
     const s = lerpPt('j' + i, p.x, p.y, p.z || 0);
+    // BÔNUS DO BRAÇO ESTICADO: quanto mais longe do centro (em METROS, que
+    // não depende da distância da câmera!), mais ganho. O canto chega com o
+    // corpo DENTRO do quadro — sem precisar sair dele.
+    const extM = Math.abs(s.x - R.cx) * R.k;
+    const g = R.k * (1 + Math.min(0.6, extM * 0.9));
     return {
-      x: Math.max(-GOAL_W / 2 - 0.6, Math.min(GOAL_W / 2 + 0.6, rootX + (s.x - R.cx) * R.k)),
+      x: Math.max(-GOAL_W / 2 - 0.6, Math.min(GOAL_W / 2 + 0.6, rootX + (s.x - R.cx) * g)),
       y: Math.max(-0.1, Math.min(2.9, rootY + (R.cy - s.y) * R.k / vidAspect)),
       z: (s.z || 0) * -2,
       visible: (p.visibility ?? 1) > 0.35

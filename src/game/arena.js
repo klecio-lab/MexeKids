@@ -1,3 +1,117 @@
+// Arena da MAGIA: NOITE ENCANTADA (nada de estádio!)
+// Céu roxo com estrelas, lua, círculo de runas no chão, aglomerados de
+// cristal e vaga-lumes. Mesmo formato: retorna { updateCrowd, clouds }.
+export function buildMagicArena(scene) {
+  scene.background = new THREE.Color(0x12082e);
+  scene.fog = new THREE.Fog(0x12082e, 25, 70);
+
+  scene.add(new THREE.HemisphereLight(0x8b7bd8, 0x1a0f3c, 0.85));
+  const moon = new THREE.DirectionalLight(0xbfa8ff, 1.2);
+  moon.position.set(-6, 12, 8);
+  moon.castShadow = true;
+  moon.shadow.mapSize.set(1024, 1024);
+  scene.add(moon);
+
+  // lua
+  const moonBall = new THREE.Mesh(
+    new THREE.CircleGeometry(2.8, 28),
+    new THREE.MeshBasicMaterial({ color: 0xf3eaff, fog: false })
+  );
+  moonBall.position.set(18, 16, 45);
+  moonBall.lookAt(0, 2, -4);
+  scene.add(moonBall);
+  // estrelas (pontinhos no domo)
+  const starN = 250;
+  const sp = new Float32Array(starN * 3);
+  for (let i = 0; i < starN; i++) {
+    const a = Math.random() * Math.PI * 2, e = Math.random() * 1.1 + 0.1, r = 60;
+    sp[i * 3] = Math.cos(a) * Math.cos(e) * r;
+    sp[i * 3 + 1] = Math.sin(e) * r;
+    sp[i * 3 + 2] = Math.sin(a) * Math.cos(e) * r;
+  }
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.22, fog: false })));
+
+  // chão da clareira
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(70, 50),
+    new THREE.MeshStandardMaterial({ color: 0x1b1040, roughness: 1 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.02;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // CÍRCULO DE RUNAS brilhante no chão (anéis + raios)
+  const runeCols = [0x22d3ee, 0xe879f9, 0xfacc15];
+  runeCols.forEach((col, i) => {
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(2.2 + i * 1.3, 2.45 + i * 1.3, 48),
+      new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.01 + i * 0.002;
+    scene.add(ring);
+  });
+  for (let i = 0; i < 8; i++) {
+    const ray = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.18, 5.6),
+      new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
+    );
+    ray.rotation.x = -Math.PI / 2;
+    ray.rotation.z = (i / 8) * Math.PI * 2;
+    ray.position.y = 0.012;
+    // desloca do centro pra borda: anda metade do comprimento na direção do ângulo
+    ray.translateY(2.8);
+    scene.add(ray);
+  }
+
+  // aglomerados de cristal decorativos (os alvos do jogo são primos desses!)
+  const decoCols = [0xa855f7, 0x22d3ee];
+  for (const [dx, dz, s] of [[-9, 6, 1.4], [9, 7, 1.1], [-6, 12, 0.9], [6, 13, 1.2]]) {
+    const g = new THREE.Group();
+    for (let i = 0; i < 3; i++) {
+      const cr = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.5 - i * 0.12, 0),
+        new THREE.MeshStandardMaterial({
+          color: 0x2a1650, emissive: decoCols[i % 2], emissiveIntensity: 1.2, roughness: 0.2
+        })
+      );
+      cr.position.set((i - 1) * 0.55, 0.4 - i * 0.08, (i % 2) * 0.3);
+      cr.rotation.z = (i - 1) * 0.25;
+      cr.castShadow = true;
+      g.add(cr);
+    }
+    g.position.set(dx, 0, dz);
+    g.scale.setScalar(s);
+    scene.add(g);
+  }
+
+  // vaga-lumes (a "torcida" da noite: dançam mais quando explode magia!)
+  const flies = [];
+  const flyMat = new THREE.MeshBasicMaterial({ color: 0xd9f99d, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+  const flyGeo = new THREE.SphereGeometry(0.07, 8, 6);
+  for (let i = 0; i < 16; i++) {
+    const f = new THREE.Mesh(flyGeo, flyMat);
+    const base = new THREE.Vector3((Math.random() - 0.5) * 24, 0.6 + Math.random() * 2.4, 2 + Math.random() * 10);
+    f.position.copy(base);
+    scene.add(f);
+    flies.push({ f, base, ph: Math.random() * 9 });
+  }
+  function updateCrowd(t, amp = 1) {
+    for (const { f, base, ph } of flies) {
+      f.position.set(
+        base.x + Math.sin(t * 0.9 + ph) * 0.8 * amp,
+        base.y + Math.sin(t * 1.7 + ph * 2) * 0.4 * amp,
+        base.z + Math.cos(t * 0.7 + ph) * 0.5
+      );
+    }
+  }
+
+  return { updateCrowd, clouds: [] };
+}
+
 // Arena do Queimado: QUADRA DA ESCOLA (não estádio!)
 // Cimento pintado com linhas, muro de tijolo, faixa "QUEIMADO MALUCO",
 // colegas torcendo na muretinha, bola ao cesto de reserva.
