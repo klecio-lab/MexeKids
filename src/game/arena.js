@@ -1,3 +1,92 @@
+// Pista da CORRIDA: avenida de manhã (scroll infinito!)
+// Asfalto com faixas que correm + postes e árvores que passam voando.
+// Retorna { scroll(dt, speed) } — o jogo chama todo frame.
+export function buildRunnerTrack(scene) {
+  scene.background = new THREE.Color(0x8fd3ff);
+  scene.fog = new THREE.Fog(0x8fd3ff, 30, 85);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x4a7d3c, 1.0));
+  const sun = new THREE.DirectionalLight(0xfff2d0, 1.7);
+  sun.position.set(6, 14, -4);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  scene.add(sun);
+
+  // asfalto com tracejados nas divisórias das 3 faixas (faixas em ±1.6 → linhas em ±0.8)
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#3f4750'; g.fillRect(0, 0, 256, 256);
+  g.fillStyle = '#facc15';
+  g.fillRect(0, 0, 10, 256); g.fillRect(246, 10, 256, 256); // bordas amarelas
+  g.fillStyle = '#ffffff';
+  for (const lx of [85, 170]) for (let y = 0; y < 256; y += 64) g.fillRect(lx, y, 8, 34);
+  const roadTex = new THREE.CanvasTexture(c);
+  roadTex.wrapS = roadTex.wrapT = THREE.RepeatWrapping;
+  roadTex.repeat.set(1, 10);
+  roadTex.colorSpace = THREE.SRGBColorSpace;
+  const road = new THREE.Mesh(
+    new THREE.PlaneGeometry(12, 90),
+    new THREE.MeshStandardMaterial({ map: roadTex, roughness: 1 })
+  );
+  road.rotation.x = -Math.PI / 2;
+  road.position.set(0, 0, 30);
+  road.receiveShadow = true;
+  scene.add(road);
+  // grama nas laterais
+  for (const sx of [-1, 1]) {
+    const grass = new THREE.Mesh(
+      new THREE.PlaneGeometry(30, 90),
+      new THREE.MeshStandardMaterial({ color: 0x46b455, roughness: 1 })
+    );
+    grass.rotation.x = -Math.PI / 2;
+    grass.position.set(sx * 21, -0.02, 30);
+    grass.receiveShadow = true;
+    scene.add(grass);
+  }
+
+  // postes + árvores que passam voando (piscina reciclada)
+  const props = [];
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
+  const lampMat = new THREE.MeshBasicMaterial({ color: 0xfff7c2 });
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x7c4a21, roughness: 0.9 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x2f9e44, roughness: 0.9 });
+  for (let i = 0; i < 12; i++) {
+    const side = i % 2 ? 1 : -1;
+    let m;
+    if (i % 3 === 2) {
+      // árvore: tronco + copa
+      m = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 1.6, 8), trunkMat);
+      trunk.position.y = 0.8;
+      const leaf = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.2, 10), leafMat);
+      leaf.position.y = 2.4;
+      leaf.castShadow = true;
+      m.add(trunk, leaf);
+    } else {
+      // poste com lâmpada
+      m = new THREE.Group();
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 4.4, 8), poleMat);
+      pole.position.y = 2.2;
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), lampMat);
+      lamp.position.y = 4.5;
+      m.add(pole, lamp);
+    }
+    m.position.set(side * (7.5 + Math.random() * 3), 0, -6 + i * 6.5);
+    scene.add(m);
+    props.push(m);
+  }
+
+  function scroll(dt, speed) {
+    roadTex.offset.y -= dt * speed / 9; // 90m de pista / 10 repetições
+    for (const m of props) {
+      m.position.z += dt * speed;
+      if (m.position.z > 10) m.position.z -= 12 * 6.5;
+    }
+  }
+  return { scroll };
+}
+
 // Arena da MAGIA: NOITE ENCANTADA (nada de estádio!)
 // Céu roxo com estrelas, lua, círculo de runas no chão, aglomerados de
 // cristal e vaga-lumes. Mesmo formato: retorna { updateCrowd, clouds }.

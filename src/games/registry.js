@@ -1,6 +1,7 @@
 // Registro de jogos — adicionar um jogo novo = 1 entrada aqui + 1 arquivo.
 // Cada jogo implementa: create(canvas, events) => { start, stop, dispose,
 // setJointsProvider(fn), setFrameHook(fn) }  (ver games/_template.js)
+import { RunnerGame } from './runner.js';
 import { GoalkeeperGame } from '../game/goalkeeper.js';
 import { DodgeGame } from './dodge.js';
 import { PowersGame } from './powers.js';
@@ -17,6 +18,15 @@ export const GAMES = [
     icons: ['🧤', '⚽', '🔥'],
     goalsMax: '/3',
     create: (canvas, events) => new GoalkeeperGame(canvas, events)
+  },
+  {
+    id: 'runner',
+    emoji: '🏃',
+    title: 'Corrida Maluca',
+    desc: 'Desvie, PULE e AGACHE! Quadril troca de faixa, setas no teclado também! 🏃',
+    icons: ['🪙', '🏃', '⚡'],
+    goalsMax: 'm',
+    create: (canvas, events) => new RunnerGame(canvas, events)
   },
   {
     id: 'dodge',
