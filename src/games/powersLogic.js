@@ -7,20 +7,23 @@ export const ELEMENTS = {
 export const ELEMENT_IDS = Object.keys(ELEMENTS);
 
 // "FOGO!", "solte o gelo", "raio mcqueen" -> elemento (ou null)
+// Com apelidos: o Chrome às vezes ouve "fou", "jel", "raiu" — vale igual!
+const ALIASES = [
+  ['fogo', ['fog', 'fou', 'foc', 'folg']],
+  ['gelo', ['gel', 'jel', 'gil', 'fri', 'ice']],
+  ['raio', ['rai', 'raiu', 'ray', 'relamp', 'trov']],
+];
 export function parseElement(text) {
   if (!text) return null;
   const t = String(text).toLowerCase();
-  if (t.includes('fog')) return 'fogo';
-  if (t.includes('gel') || t.includes('fri') || t.includes('ice')) return 'gelo';
-  if (t.includes('rai') || t.includes('relamp') || t.includes('trov')) return 'raio';
+  for (const [el, keys] of ALIASES) {
+    if (keys.some(k => t.includes(k))) return el;
+  }
   return null;
 }
 
-// carga 0..1: grito acima do limiar carrega, silêncio esvazia devagar
-export function chargeStep(charge, rms, threshold, dt) {
-  const d = rms > threshold ? (rms - threshold) * 2.4 : -0.22;
-  return Math.max(0, Math.min(1, charge + d * dt));
-}
+// falar 1x = dispara na hora (poder sempre cheio); intervalo anti-duplo
+export const CAST_COOLDOWN = 0.8;
 
 // pontos: base 1 + combinou elemento +1 + carga máxima (crítico) +1
 export function pointsFor(match, crit) {

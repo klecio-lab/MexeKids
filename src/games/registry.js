@@ -31,7 +31,7 @@ export const GAMES = [
     id: 'powers',
     emoji: '🪄',
     title: 'Poderes da Voz',
-    desc: 'GRITE pra carregar! FOGO, GELO ou RAIO sai da sua mão! 🎤',
+    desc: 'Diga FOGO, GELO ou RAIO — 1x e a magia SAI DA MÃO! 🎤',
     icons: ['⭐', '🪄', '⚡'],
     goalsMax: '',
     create: (canvas, events) => new PowersGame(canvas, events)

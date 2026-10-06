@@ -9,7 +9,7 @@ import { Particles3D } from '../game/particles3d.js';
 import { sounds } from '../engine/audio.js';
 import { storage } from '../engine/storage.js';
 import { voice } from '../engine/voice.js';
-import { ELEMENTS, ELEMENT_IDS, chargeStep, pointsFor } from './powersLogic.js';
+import { ELEMENTS, ELEMENT_IDS, CAST_COOLDOWN, pointsFor } from './powersLogic.js';
 
 const TIME_S = 60;
 const ORB_N = 4;
@@ -47,13 +47,27 @@ export class PowersGame {
     );
     this.chargeBall.visible = false;
     this.scene.add(this.chargeBall);
+    // clarão que segue a magia + anéis de choque (reusados, sem alocar em jogo)
+    this.flash = new THREE.PointLight(0xffffff, 0, 18);
+    this.scene.add(this.flash);
+    this.flashEl = document.getElementById('flash');
+    this.rings = [];
+    for (let i = 0; i < 3; i++) {
+      const r = new THREE.Mesh(
+        new THREE.RingGeometry(0.3, 0.42, 28),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
+      );
+      r.visible = false;
+      this.scene.add(r);
+      this.rings.push(r);
+    }
 
     // orbes-alvo flutuantes (cada um tem um elemento: combine pra +2!)
     this.orbs = [];
     for (let i = 0; i < ORB_N; i++) {
       const core = new THREE.Mesh(
         new THREE.SphereGeometry(0.34, 20, 16),
-        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf97316, emissiveIntensity: 1.1, roughness: 0.3 })
+        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf97316, emissiveIntensity: 1.6, roughness: 0.3 })
       );
       const shell = new THREE.Mesh(
         new THREE.SphereGeometry(0.46, 16, 12),
@@ -67,20 +81,40 @@ export class PowersGame {
       this.placeOrb(this.orbs[i], true);
     }
 
-    // projéteis (magia com rabo de faísca via partículas no disparo)
+    // projéteis: núcleo parrudo + halo aditivo + RASTRO de luz (zero lixo por frame)
     this.shots = [];
     for (let i = 0; i < 3; i++) {
       const m = new THREE.Mesh(
-        new THREE.SphereGeometry(0.18, 16, 12),
-        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf97316, emissiveIntensity: 2 })
+        new THREE.SphereGeometry(0.26, 18, 14),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf97316, emissiveIntensity: 2.4 })
       );
+      const glow = new THREE.Mesh(
+        new THREE.SphereGeometry(0.48, 14, 10),
+        new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
+      );
+      m.add(glow);
       m.visible = false;
       this.scene.add(m);
-      this.shots.push({ m, active: false, target: null, el: 'fogo', power: 0 });
+      const trailN = 16;
+      const trailPos = new Float32Array(trailN * 3);
+      const trailGeo = new THREE.BufferGeometry();
+      trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+      const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({
+        color: 0xf97316, transparent: true, opacity: 0.8,
+        blending: THREE.AdditiveBlending, depthWrite: false
+      }));
+      trail.visible = false;
+      trail.frustumCulled = false;
+      this.scene.add(trail);
+      this.shots.push({ m, glow, trail, trailPos, trailN, active: false, vel: new THREE.Vector3(0, 0, 1), el: 'fogo', life: 0 });
     }
 
     this.score = 0; this.casts = 0; this.level = 1;
-    this.charge = 0; this.element = 'fogo'; this.elIdx = 0;
+    this.element = 'fogo'; this.elIdx = 0;
+    this.cool = 0; // recarga entre disparos (falar 1x = 1 tiro!)
+    this.prevHand = null;
+    this.handVel = new THREE.Vector3();
+    this.hitstop = 0;
     this.timeLeft = TIME_S;
     this.state = 'idle';
     this._provider = null;
@@ -175,7 +209,7 @@ export class PowersGame {
     // mic é async e pode falhar: o jogo começa igual (fallback cobre)
     voice.ensure().then(ok => {
       if (this.state === 'idle') return;
-      this.ev.onMsg?.(ok ? '🎤 GRITE pra carregar! Diga FOGO, GELO ou RAIO!' : '🚫 Sem mic: carga sozinha + CLIQUE dispara!');
+      this.ev.onMsg?.(ok ? '🎤 Diga FOGO, GELO ou RAIO — 1x e a magia SAI DA MÃO!' : '🚫 Sem mic: aponte a mão e CLIQUE pra disparar!');
     });
     this.loop();
   }
@@ -196,33 +230,55 @@ export class PowersGame {
     return new THREE.Vector3(h.x, h.y, h.z + 0.3);
   }
 
+  // onda de choque visível (anel que abre + some)
+  shock(pos, colorHex, big = 1) {
+    const r = this.rings.find(r => !r.visible) || this.rings[0];
+    r.position.copy(pos);
+    r.lookAt(this.camera.position);
+    r.material.color.setHex(colorHex);
+    r.material.opacity = 0.95;
+    r.scale.setScalar(0.3);
+    r.visible = true;
+    gsap.to(r.scale, { x: 2.6 * big, y: 2.6 * big, z: 1, duration: 0.45, ease: 'power2.out', overwrite: true });
+    gsap.to(r.material, { opacity: 0, duration: 0.45, overwrite: true, onComplete: () => { r.visible = false; } });
+  }
+
   cast(el) {
-    if (this.charge < 0.2) {
-      this.ev.onMsg?.('🔋 Fraco... GRITE mais alto!');
-      return;
-    }
+    if (this.cool > 0) return; // recarregando...
     const s = this.shots.find(s => !s.active);
     if (!s) return;
-    // mira: orbe ativo mais próximo da mão
+    // MIRA PELA MÃO: arremesso (mão rápida) aponta; mão parada = pra frente
     const hp = this.handPos();
-    let best = null, bestD = 1e9;
-    for (const o of this.orbs) {
-      if (!o.active) continue;
-      const d = o.g.position.distanceTo(hp);
-      if (d < bestD) { bestD = d; best = o; }
+    const dir = new THREE.Vector3(0, 0.06, 1);
+    if (this.handVel.length() > 1.5) {
+      dir.copy(this.handVel).normalize();
+      dir.z = Math.max(dir.z, 0.25); // sempre um pouco pra frente (pros orbes!)
+      dir.normalize();
     }
-    if (!best) return;
     s.active = true;
-    s.target = best;
+    s.vel.copy(dir);
     s.el = el;
-    s.power = this.charge;
+    s.life = 2.5;
     s.m.material.emissive.setHex(ELEMENTS[el].color);
+    s.glow.material.color.setHex(ELEMENTS[el].color);
+    s.trail.material.color.setHex(ELEMENTS[el].color);
     s.m.position.copy(hp);
     s.m.visible = true;
+    for (let i = 0; i < s.trailN; i++) {
+      s.trailPos[i * 3] = hp.x; s.trailPos[i * 3 + 1] = hp.y; s.trailPos[i * 3 + 2] = hp.z;
+    }
+    s.trail.geometry.attributes.position.needsUpdate = true;
+    s.trail.visible = true;
     this.casts++;
-    this.charge = 0;
+    this.cool = CAST_COOLDOWN;
     sounds.pew();
-    this.particles.burst(hp, 20, [ELEMENTS[el].color, 0xffffff]);
+    // SAÍDA DA MÃO: clarão + anel + faíscas na palma!
+    this.flash.position.copy(hp);
+    this.flash.color.setHex(ELEMENTS[el].color);
+    this.flash.intensity = 50;
+    this.shock(hp, ELEMENTS[el].color, 1.0);
+    this.particles.burst(hp, 40, [ELEMENTS[el].color, 0xffffff]);
+    this.shake = Math.max(this.shake, 0.1);
     // sem mic, o elemento roda a cada disparo
     if (!voice.hasMic) {
       this.elIdx = (this.elIdx + 1) % ELEMENT_IDS.length;
@@ -232,21 +288,38 @@ export class PowersGame {
     this.ev.onHud?.(this.stats());
   }
 
-  popOrb(o, el, power) {
+  killShot(s) {
+    s.active = false;
+    s.m.visible = false;
+    s.trail.visible = false;
+  }
+
+  popOrb(o, el) {
     o.active = false;
     o.g.visible = false;
     o.respawn = 0.8;
     const match = o.el === el;
-    const crit = power >= 0.99;
-    const pts = pointsFor(match, crit);
+    const pts = pointsFor(match, true); // falar 1x = poder sempre CHEIO
     this.score += pts;
     this.level = 1 + Math.floor(this.score / 8);
     sounds.ding();
-    this.shake = Math.max(this.shake, 0.12);
+    this.hitstop = 0.08; // micro-pausa = "peso" da explosão
+    this.shake = 0.25;
     this.crowdExcite = 3;
-    this.particles.burst(o.g.position.clone(), 70, [ELEMENTS[el].color, 0xffffff]);
+    // EXPLOSÃO PARRUDA: clarão + flash na tela + anel duplo + chuva de faísca
+    const pos = o.g.position.clone();
+    this.flash.position.copy(pos);
+    this.flash.color.setHex(ELEMENTS[el].color);
+    this.flash.intensity = 90;
+    if (this.flashEl) {
+      this.flashEl.style.opacity = 0.45;
+      gsap.to(this.flashEl, { opacity: 0, duration: 0.35, overwrite: true });
+    }
+    this.shock(pos, ELEMENTS[el].color, 1.6);
+    this.shock(pos, 0xffffff, 1.0);
+    this.particles.burst(pos, 120, [ELEMENTS[el].color, 0xffffff]);
     this.ev.onHud?.(this.stats());
-    this.ev.onPop?.(crit ? '💥 CRÍTICO! +' + pts : match ? `${ELEMENTS[el].emoji} COMBO! +${pts}` : `+${pts}`);
+    this.ev.onPop?.(match ? `${ELEMENTS[el].emoji} COMBO! +${pts}` : `💥 +${pts}`);
   }
 
   finish() {
@@ -259,7 +332,13 @@ export class PowersGame {
   loop = () => {
     if (!this.running) return;
     requestAnimationFrame(this.loop);
-    const dt = Math.min(this.clock.getDelta(), 0.05);
+    const rawDt = Math.min(this.clock.getDelta(), 0.05);
+    if (this.hitstop > 0) {
+      this.hitstop -= rawDt;
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
+    const dt = rawDt;
 
     try {
       const joints = this._provider ? this._provider() : null;
@@ -270,30 +349,30 @@ export class PowersGame {
 
     if (this.state === 'countdown') {
       this.countTimer += dt;
-      const seq = ['3️⃣', '2️⃣', '1️⃣', 'GRITA! 🎤'];
+      const seq = ['3️⃣', '2️⃣', '1️⃣', 'MAGIA! 🪄'];
       const idx = Math.min(Math.floor(this.countTimer / 0.7), 3);
       if (idx !== this.countStep) { this.countStep = idx; sounds.countdown(); this.ev.onMsg?.(seq[idx]); }
       if (this.countTimer > 2.9) { this.state = 'playing'; sounds.go(); }
     } else if (this.state === 'playing') {
       this.timeLeft -= dt;
       if (this.timeLeft <= 0) { this.finish(); }
-      // CARGA: grito enche, silêncio esvazia (sem mic: respiração mágica)
-      const rms = voice.hasMic ? voice.level() : -1;
-      this.charge = rms >= 0
-        ? chargeStep(this.charge, rms, voice.threshold(), dt)
-        : Math.min(1, this.charge + dt * 0.35);
-      // carga máxima = dispara sozinho!
-      if (this.charge >= 1) {
-        this.cast(this.element);
-        if (this.state === 'playing') this.ev.onMsg?.('💥 MÁXIMO!');
+      this.cool = Math.max(0, this.cool - dt);
+      // velocidade da mão (gesto de ARREMESSO = mira!)
+      const hp = this.handPos();
+      if (this.prevHand && dt > 0) {
+        const v = hp.clone().sub(this.prevHand).divideScalar(dt);
+        this.handVel.lerp(v, 0.5);
       }
-      // barra de carga (sem spam: 4x por segundo)
+      this.prevHand = hp.clone();
+      // recado (sem spam: 4x por segundo)
       this.msgT += dt;
       if (this.msgT > 0.25) {
         this.msgT = 0;
-        const bar = '▓'.repeat(Math.round(this.charge * 8)).padEnd(8, '░');
         const t = Math.ceil(this.timeLeft);
-        this.ev.onMsg?.(`${ELEMENTS[this.element].emoji} ${bar} ${t}s`);
+        const el = ELEMENTS[this.element].emoji;
+        this.ev.onMsg?.(voice.hasMic
+          ? `${el} Aponte a mão e diga ${this.element.toUpperCase()}! ${t}s`
+          : `${el} Aponte a mão e CLIQUE! ${t}s`);
       }
       // orbes flutuam + renascem
       const sp = 1 + (this.level - 1) * 0.25;
@@ -310,23 +389,52 @@ export class PowersGame {
           o.base.z
         );
         o.g.rotation.y += dt * 1.5;
+        o.g.scale.setScalar(1 + Math.sin(t * 4 + o.ph) * 0.1); // orbe "respira"
       }
-      // projéteis caçam o alvo
+      // magia voa pra onde a mão APONTOU (com leve ajuda pra não frustrar)
       for (const s of this.shots) {
         if (!s.active) continue;
-        if (!s.target.active) {
-          s.active = false; s.m.visible = false;
-          continue;
+        s.life -= dt;
+        if (s.life <= 0) { this.killShot(s); continue; }
+        // assistência: curva suave pro orbe mais alinhado (cone de ~30°)
+        let best = null, bestA = 0.5;
+        for (const o of this.orbs) {
+          if (!o.active) continue;
+          const to = o.g.position.clone().sub(s.m.position).normalize();
+          const a = to.angleTo(s.vel);
+          if (a < bestA) { bestA = a; best = o; }
         }
-        const tp = s.target.g.position;
-        const d = tp.clone().sub(s.m.position);
-        const dist = d.length();
-        if (dist < 0.5) {
-          s.active = false; s.m.visible = false;
-          this.popOrb(s.target, s.el, s.power);
-          continue;
+        if (best) {
+          const to = best.g.position.clone().sub(s.m.position).normalize();
+          s.vel.lerp(to, Math.min(1, 3 * dt)).normalize();
         }
-        s.m.position.addScaledVector(d.normalize(), Math.min(dist, 9 * dt));
+        s.m.position.addScaledVector(s.vel, 10 * dt);
+        // personalidade por elemento: fogo tremula, gelo gira, raio zigzagueia!
+        const ft = this.clock.elapsedTime;
+        if (s.el === 'fogo') s.m.scale.setScalar(1 + Math.sin(ft * 40) * 0.15);
+        else if (s.el === 'gelo') { s.m.rotation.x += dt * 9; s.m.rotation.y += dt * 6; }
+        else { s.m.position.x += (Math.random() - 0.5) * 0.09; s.m.position.y += (Math.random() - 0.5) * 0.09; }
+        // rastro de luz acompanha
+        s.trailPos.copyWithin(0, 3);
+        s.trailPos[(s.trailN - 1) * 3] = s.m.position.x;
+        s.trailPos[(s.trailN - 1) * 3 + 1] = s.m.position.y;
+        s.trailPos[(s.trailN - 1) * 3 + 2] = s.m.position.z;
+        s.trail.geometry.attributes.position.needsUpdate = true;
+        // clarão viaja junto com a magia
+        if (this.flash.intensity < 12) {
+          this.flash.position.copy(s.m.position);
+          this.flash.color.setHex(ELEMENTS[s.el].color);
+          this.flash.intensity = 12;
+        }
+        // acertou algum orbe? (generoso: 0.65)
+        for (const o of this.orbs) {
+          if (!o.active) continue;
+          if (o.g.position.distanceTo(s.m.position) < 0.65) {
+            this.killShot(s);
+            this.popOrb(o, s.el);
+            break;
+          }
+        }
       }
     }
 
@@ -338,15 +446,15 @@ export class PowersGame {
       this.avatar.applyPose();
     }
 
-    // esfera de energia segue a mão da magia
-    if (this.state === 'playing' && this.charge > 0.05) {
+    // bolinha pronta na mão (cheia + latejando = pode disparar!) + clarão apaga
+    this.flash.intensity = Math.max(0, this.flash.intensity - dt * 260);
+    if (this.state === 'playing') {
       const hp = this.handPos();
       this.chargeBall.visible = true;
       this.chargeBall.position.copy(hp);
-      const wob = this.charge > 0.7 ? (Math.random() - 0.5) * 0.08 : 0;
-      this.chargeBall.position.x += wob;
-      this.chargeBall.position.y += wob;
-      this.chargeBall.scale.setScalar(0.4 + this.charge * 1.6);
+      const ready = this.cool <= 0 ? 1 : 1 - this.cool / CAST_COOLDOWN;
+      const pulse = this.cool <= 0 ? Math.sin(this.clock.elapsedTime * 8) * 0.12 : 0;
+      this.chargeBall.scale.setScalar(0.6 + ready * 1.4 + pulse);
     } else {
       this.chargeBall.visible = false;
     }
