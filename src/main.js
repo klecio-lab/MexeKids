@@ -18,7 +18,7 @@ let detectRaf = 0;
 let starting = false;
 let visionLoaded = false;
 const holdState = { value: 0 };
-const holdSecs = () => storage.settings().holdSeconds ?? 1.2;
+const holdSecs = () => storage.settings().holdSeconds ?? 0.8;
 
 function boot() {
   if (!window.WebGLRenderingContext) el('compat-msg').textContent = '⚠️ Navegador sem WebGL.';
@@ -79,15 +79,13 @@ async function startCalib() {
     lastT = now;
     const frame = input.nextFrame({ pose: true, hands: true });
     const framed = frame.hasCamera ? frame.framing?.ok : true; // sem câmera: modo mouse
-    if (framed) {
-      okFrames++;
-      if (okFrames > 25) {
-        el('btn-play-now').classList.remove('hidden');
-        el('gesture-box').classList.toggle('hidden', !(input.handsEnabled && frame.hasCamera));
-        el('calib-msg').textContent = '✅ Pronto! Aperte JOGAR ou segure o 👍!';
-      }
-    } else {
-      okFrames = 0;
+    // contador com PERDÃO: frame ruim tira 3 em vez de zerar (piscou, valeu!)
+    okFrames = Math.max(0, Math.min(20, okFrames + (framed ? 1 : -3)));
+    if (okFrames > 18) {
+      el('btn-play-now').classList.remove('hidden');
+      el('gesture-box').classList.toggle('hidden', !(input.handsEnabled && frame.hasCamera));
+      el('calib-msg').textContent = '✅ Pronto! Aperte JOGAR ou segure o 👍!';
+    } else if (!framed) {
       el('btn-play-now').classList.add('hidden');
       el('gesture-box').classList.add('hidden');
       el('calib-msg').textContent = frame.framing?.msg || '👀 Apareça na câmera!';

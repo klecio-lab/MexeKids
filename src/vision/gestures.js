@@ -31,8 +31,8 @@ export function isPeace(lm) {
   return { ok: pass === 4, score: pass / 4 };
 }
 
-// 👍 joinha frontal: dedão esticado pra cima + outros 4 dedos dobrados.
-// Retorna { ok, score 0..1 } — score alimenta a barrinha de progresso.
+// 👍 joinha: dedão esticado pra cima + resto dobrado. Generoso de propósito
+// (5/6 passa: mão de criança torta vale!): Retorna { ok, score 0..1 }.
 export function isThumbsUp(lm) {
   if (!lm || lm.length < 21) return { ok: false, score: 0 };
   const wrist = lm[0];
@@ -41,15 +41,16 @@ export function isThumbsUp(lm) {
   let pass = 0;
   const total = 6;
 
-  // 1) dedão esticado: ponta longe do punho (relativo ao tamanho da mão)
-  if (dist(lm[4], wrist) / size > 0.95) pass++;
-  // 2) dedão apontando pra cima (ponta acima da junta do meio)
-  if (lm[4].y < lm[2].y) pass++;
+  // 1) dedão esticado: ponta longe do punho (0.8 = vale dedão curto de criança)
+  if (dist(lm[4], wrist) / size > 0.8) pass++;
+  // 2) dedão pra cima MESMO (margem p/ mão inclinada, mas joinha p/ baixo não vale!)
+  const thumbUp = lm[4].y < lm[2].y + size * 0.08 && lm[4].y < wrist.y - size * 0.05;
+  if (thumbUp) pass++;
   // 3-6) demais dedos dobrados: ponta mais perto do punho que a junta do meio
   const fingers = [[8, 6], [12, 10], [16, 14], [20, 18]];
   for (const [tip, pip] of fingers) {
     if (dist(lm[tip], wrist) < dist(lm[pip], wrist)) pass++;
   }
 
-  return { ok: pass === total, score: pass / total };
+  return { ok: pass >= total - 1 && thumbUp, score: pass / total };
 }

@@ -157,17 +157,21 @@ export function mapJointsToGoal(lm) {
   return J;
 }
 
-// Calibragem: precisa ver ombros + quadris, largura mínima e centralizado
+// Calibragem generosa: ombros + quadris visíveis (punhos NÃO exigidos!),
+// distância e centro com margem p/ criança que não para quieta.
 export function checkFraming(lm) {
   if (!lm) return { ok: false, msg: '👀 Apareça na câmera!', score: 0 };
   const need = [IDX.L_SH, IDX.R_SH, IDX.L_HIP, IDX.R_HIP, IDX.L_WR, IDX.R_WR];
   const visCount = need.filter(i => isVisible(lm, i, 0.4)).length;
-  if (visCount < 5) return { ok: false, msg: '🙋 Abra os braços! Quero ver seus punhos!', score: visCount / 6 };
+  if (visCount < 4) return { ok: false, msg: '🙋 Quero ver seus ombros!', score: visCount / 6 };
+  // quadris são o centro de tudo (mergulho, corrida, pulo): sem eles, nem começa
+  if (!isVisible(lm, IDX.L_HIP, 0.4) || !isVisible(lm, IDX.R_HIP, 0.4))
+    return { ok: false, msg: '🦵 Apareça da cintura pra cima!', score: 0.5 };
   const shW = Math.abs(lm[IDX.L_SH].x - lm[IDX.R_SH].x);
-  if (shW < 0.16) return { ok: false, msg: '🔍 Chegue MAIS PERTO da câmera!', score: 0.4 };
-  if (shW > 0.65) return { ok: false, msg: '📏 Afaste-se um pouquinho!', score: 0.6 };
+  if (shW < 0.13) return { ok: false, msg: '🔍 Chegue MAIS PERTO da câmera!', score: 0.4 };
+  if (shW > 0.72) return { ok: false, msg: '📏 Afaste-se um pouquinho!', score: 0.6 };
   const cx = (lm[IDX.L_SH].x + lm[IDX.R_SH].x) / 2;
-  if (Math.abs(cx - 0.5) > 0.16) return { ok: false, msg: cx < 0.5 ? '➡️ Vá para sua direita!' : '⬅️ Vá para sua esquerda!', score: 0.7 };
+  if (Math.abs(cx - 0.5) > 0.2) return { ok: false, msg: cx < 0.5 ? '➡️ Vá para sua direita!' : '⬅️ Vá para sua esquerda!', score: 0.7 };
   return { ok: true, msg: '✅ Perfeito! Fique aí!', score: 1 };
 }
 

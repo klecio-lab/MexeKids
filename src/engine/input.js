@@ -117,7 +117,7 @@ export class InputManager {
 
 // Segurar-firmar: retorna progresso 0..1 (ex: joinha por 1.2s dispara ação).
 // `state` é um { value: 0 } mutável guardado por quem chama.
-export function holdProgress(state, holdSeconds, detected, dt, decay = 2) {
+export function holdProgress(state, holdSeconds, detected, dt, decay = 1) {
   state.value = detected ? state.value + dt : Math.max(0, state.value - dt * decay);
   return Math.min(1, state.value / holdSeconds);
 }
